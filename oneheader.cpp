@@ -7,6 +7,154 @@
 #include <regex>
 #include <experimental/filesystem>
 
+class DetectIncludeFiles {
+public:
+	DetectIncludeFiles(const std::string &filename) {
+		std::fstream file(filename);
+		std::stringstream ss;
+
+		ss << file.rdbuf();
+		ss.str(removeBlockComments(ss.str()));
+		parse(ss);
+	}
+
+	const std::vector<std::string> &getIncludes() {
+		return includes;
+	}
+private:
+	std::vector<std::string> includes;
+	static std::set<char> ignore;
+
+	std::string removeBlockComments(const std::string &inp) {
+		int transition[4][2] = {
+			{0, 1},
+			{0, 2},
+			{2, 3},
+			{2, 0}
+		};
+
+		int state = 0;
+		int type = -1;
+
+		std::string result;
+
+		for (auto ch:inp) {
+			switch (state) {
+			case 0:
+				if (ch == '/')
+					type = 1;
+				else
+					type = 0;
+
+				if (type == 0)
+					result.push_back(ch);
+				break;
+			case 1:
+				if (ch == '*')
+					type = 1;
+				else
+					type = 0;
+
+				if (type == 0) {
+					result.push_back('/');
+					result.push_back(ch);
+				}
+				break;
+			case 2:
+				if (ch == '*')
+					type = 1;
+				else
+					type = 0;
+				break;
+			case 3:
+				if (ch == '/')
+					type = 1;
+				else
+					type = 0;
+				break;
+			default:
+				throw std::runtime_error("invalid state - block comment");
+			}
+			state = transition[state][type];
+		}
+		return result;
+	}
+
+	std::string parseInclude(const std::string line) { // parse #include
+		int transitions[2][2] = {
+			{0, 1},
+			{1,-1}
+		};
+
+		int state = 0;
+		int type = -1;
+		char close = '>';
+
+		std::string clause, header;
+
+		auto it = line.begin();
+		while (it != line.end() && ignore.count(*it) > 0)
+			++it;
+
+		if (it != line.end() && *it == '#') {
+			for (auto c = it; c != line.end(); ++c) {
+				auto ch = *c;
+				switch(state) {
+				case 0:
+					if (ch == '<') {
+						type = 1;
+						close = '>';
+					} else if (ch == '\"') {
+						type = 1;
+						close = ch;
+					} else
+						type = 0;
+
+					if (type == 0 && ignore.count(ch) == 0)
+						clause.push_back(ch);
+					break;
+				case 1:
+					if (ch == close) {
+						if (clause == "#include")
+							return header;
+					} else
+						type = 0;
+
+					if (type == 0 && ignore.count(ch) == 0)
+						header.push_back(ch);
+					break;
+				default:
+					throw std::runtime_error("invalid state - include");
+				}
+				state = transitions[state][type];
+			}
+		}
+		return "";
+	}
+
+	void parse(std::istream &inp) { // removes line comments and parses include directives
+		std::string line;
+
+		std::getline(inp, line);
+		while (inp) {
+			if (!line.empty() && line.back() == '\r')
+				line.pop_back();
+
+			auto pos = line.find("//");
+			if (pos != std::string::npos)
+				line = line.substr(0, pos);
+
+			auto header = parseInclude(line);
+			if (header != "")
+				includes.push_back(header);
+
+			std::getline(inp, line);
+		}
+	}
+};
+
+std::set<char> DetectIncludeFiles::ignore = {' ', '\t'};
+
 using FileListType = std::unordered_map<std::string, size_t>;
 using FilePathType = std::unordered_map<size_t, std::string>;
 using Graph = std::unordered_map<size_t, std::unordered_set<size_t>>;
@@ -72,45 +220,19 @@ private:
 	}
 	
 	void parseIncludes(size_t node) {
-		const std::string fullpath = filePath[node]; 
-		std::fstream file(fullpath);
-		std::string line;
-		std::regex pattern("^\\s*#\\s*include\\s+(?:<([^>]*)>|\"([^\"]*)\")\\s*");
+		const std::string fullpath = filePath[node];
+
+		DetectIncludeFiles detectIncludes(fullpath);
 		
 		graph[node];
 		
-		std::getline(file, line);
-		while (file) {
-			auto begin = std::sregex_iterator(line.begin(), line.end(), pattern);
-			auto end = std::sregex_iterator();
-			
-			std::for_each(begin, end, [this, node](std::smatch match) {
-				std::string hdr;
-				if (match.str(1) != "") {
-					auto pos = match.str(1).find_last_of('/');
-					if (pos == std::string::npos)
-						pos = 0;
-					else
-						++pos;
-					hdr = match.str(1).substr(pos);
-				} else {
-					auto pos = match.str(2).find_last_of('/');
-					if (pos == std::string::npos)
-						pos = 0;
-					else
-						++pos;
-					hdr = match.str(2).substr(pos);
-				}
-				if (!hdr.empty()) {
-					auto it = this->fileList.find(hdr);
-					if (it != this->fileList.end()) {
-						auto visitedNode = it->second;
-						this->graph[visitedNode].insert(node);
-					}
-				}
-			});
-			
-			std::getline(file, line);
+		for (auto &inc:detectIncludes.getIncludes()) {
+			fs::path hdr(inc);
+			auto it = this->fileList.find(hdr.filename().string());
+			if (it != this->fileList.end()) {
+				auto visitedNode = it->second;
+				this->graph[visitedNode].insert(node);
+			}
 		}
 	}
 
