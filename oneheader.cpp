@@ -31,7 +31,7 @@ public:
 		
 		scanDir(path);
 		for (auto &f:filePath)
-			analyzeIncludes(f.first);
+			parseIncludes(f.first);
 		topologicalSort();
 	}
 
@@ -71,7 +71,7 @@ private:
 		}
 	}
 	
-	void analyzeIncludes(size_t node) {
+	void parseIncludes(size_t node) {
 		const std::string fullpath = filePath[node]; 
 		std::fstream file(fullpath);
 		std::string line;
@@ -148,7 +148,9 @@ private:
 	static std::set<std::string> extensions;
 };
 
-std::set<std::string> SortIncludes::extensions = {".h", ".hpp"};
+std::set<std::string> SortIncludes::extensions = {
+	".h", ".hpp", ".h++", ".hh"
+};
 
 int main(int argc, char **argv) {
 	if (argc < 2) {
