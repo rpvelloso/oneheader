@@ -1,15 +1,10 @@
 #include <vector>
 #include <set>
 #include <iostream>
-#include <memory>
 #include <unordered_map>
 #include <unordered_set>
-#include <stack>
-#include <utility>
-#include <sstream>
 #include <fstream>
 #include <regex>
-#include <algorithm>
 #include <experimental/filesystem>
 
 using FileListType = std::unordered_map<std::string, size_t>;
