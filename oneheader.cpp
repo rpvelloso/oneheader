@@ -7,6 +7,8 @@
 #include <regex>
 #include <experimental/filesystem>
 
+namespace fs = std::experimental::filesystem;
+
 class DetectIncludeFiles {
 public:
 	DetectIncludeFiles(const std::string &filename) {
@@ -158,7 +160,6 @@ std::set<char> DetectIncludeFiles::ignore = {' ', '\t'};
 using FileListType = std::unordered_map<std::string, size_t>;
 using FilePathType = std::unordered_map<size_t, std::string>;
 using Graph = std::unordered_map<size_t, std::unordered_set<size_t>>;
-namespace fs = std::experimental::filesystem;
 
 enum class VisitedType {
 	Unvisited,
