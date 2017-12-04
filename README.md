@@ -1,4 +1,6 @@
 ## ONE HEADER TO RULE THEM ALL!!!
+### Binary
+Get it here [[Windows x64 static binary]](https://github.com/rpvelloso/oneheader/raw/master/oneheader-mingw64.zip)
 
 ### Problem:
 Let's say you are writing a library, and you got all your
