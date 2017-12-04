@@ -26,10 +26,10 @@ single one?
    interrupted (i.e., if it is not a DAG);
 
 ### Limitations:
-  1) It does not detects #include with line breaks and/or multiple lines;
+  1) It currently only detects single line #include directives (e.g., #include <foobar.h>);
   2) It does not handles headers with the same name in different paths;
   3) It only gives you a correct order to combine all the headers, you 
-     still need to concatenate them (maybe remove some of them).
+     still need to concatenate them (maybe you want remove or modify some of them prior to merging).
 
 ### Compiling:
   g++ -Wall -ggdb -std=c++1y -lstdc++fs oneheader.cpp -o oneheader[.exe]
