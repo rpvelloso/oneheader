@@ -39,6 +39,7 @@ private:
 		int type = -1;
 
 		std::string result;
+		result.reserve(inp.size());
 
 		for (auto ch:inp) {
 			switch (state) {
